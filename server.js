@@ -12,7 +12,7 @@ app.use(express.static('public'));
 // כתובת החיבור נלקחת ממשתנה הסביבה MONGO_URI
 const mongoURI = process.env.MONGO_URI; 
 if (!mongoURI) {
-    // שגיאה קריטית אם ה-URI לא מוגדר - תמנע מהשרת להתחיל בלי DB
+    // שגיאה קריטית אם ה-URI לא מוגדר (כמו ב-Render)
     console.error("FATAL ERROR: MONGO_URI is not defined in the environment. Please set it in Render.");
     process.exit(1); 
 }
@@ -20,24 +20,25 @@ if (!mongoURI) {
 mongoose.connect(mongoURI)
     .then(() => console.log("MongoDB Connected Successfully!"))
     .catch(err => {
+        // קריסה מיידית אם יש בעיה בחיבור ל-DB
         console.error("Error connecting to MongoDB:", err);
-        // גורם לשרת לקרוס אם החיבור ל-DB נכשל (רצוי לדעת זאת מיד)
         process.exit(1);
     });
 
 // --- הגדרת המבנה של תלמיד (Schema) ---
 const studentSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true }, // ודא שכל ID הוא ייחודי
+    id: { type: String, required: true, unique: true }, // קוד ייחודי חובה
     name: String,
     balance: Number
 });
 
 const Student = mongoose.model('Student', studentSchema);
 
-// הסיסמה נלקחת ממשתנה הסביבה שהגדרת ב-Render (הרב אליהו 123)
+// סיסמת המורה נלקחת ממשתנה הסביבה (ADMIN_PASSWORD)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // --- פונקציה לאתחול ראשוני של הכיתה ---
+// פועלת רק פעם אחת (בהפעלה הראשונה) אם אין תלמידים בכלל ב-DB.
 async function initDB() {
     const count = await Student.countDocuments();
     if (count === 0) {
@@ -51,7 +52,7 @@ async function initDB() {
         console.log("Database initialization complete.");
     }
 }
-mongoose.connection.on('connected', initDB); // מפעיל את initDB רק אחרי חיבור מוצלח
+mongoose.connection.on('connected', initDB); 
 
 // --- נתיבים (Routes) ---
 
@@ -121,12 +122,12 @@ app.post('/api/create-student', async (req, res) => {
     }
 });
 
-// 5. מחיקת כל הנתונים ואתחול מחדש
+// 5. מחיקת כל הנתונים (התיקון כאן!)
+// רק מוחק, ולא מפעיל את initDB
 app.post('/api/wipe-students', async (req, res) => {
     try {
-        await Student.deleteMany({});
-        await initDB(); 
-        res.json({ success: true, message: "כל נתוני התלמידים נמחקו בהצלחה, המערכת אותחלה." });
+        await Student.deleteMany({}); 
+        res.json({ success: true, message: "כל נתוני התלמידים נמחקו בהצלחה. הרשימה ריקה." });
     } catch (error) {
         console.error("Error wiping students:", error);
         res.json({ success: false, message: "שגיאה במחיקת הנתונים." });
