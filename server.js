@@ -9,33 +9,39 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// כתובת החיבור נלקחת ממשתנה הסביבה MONGO_URI
 const mongoURI = process.env.MONGO_URI; 
 if (!mongoURI) {
-    console.error("FATAL ERROR: MONGO_URI is not defined in the environment.");
-    process.exit(1);
+    // שגיאה קריטית אם ה-URI לא מוגדר - תמנע מהשרת להתחיל בלי DB
+    console.error("FATAL ERROR: MONGO_URI is not defined in the environment. Please set it in Render.");
+    process.exit(1); 
 }
 
 mongoose.connect(mongoURI)
     .then(() => console.log("MongoDB Connected Successfully!"))
-    .catch(err => console.log("Error connecting to MongoDB:", err));
+    .catch(err => {
+        console.error("Error connecting to MongoDB:", err);
+        // גורם לשרת לקרוס אם החיבור ל-DB נכשל (רצוי לדעת זאת מיד)
+        process.exit(1);
+    });
 
 // --- הגדרת המבנה של תלמיד (Schema) ---
 const studentSchema = new mongoose.Schema({
-    id: String,      // קוד תלמיד אישי
-    name: String,    // שם מלא
-    balance: Number  // יתרה נוכחית
+    id: { type: String, required: true, unique: true }, // ודא שכל ID הוא ייחודי
+    name: String,
+    balance: Number
 });
 
 const Student = mongoose.model('Student', studentSchema);
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1234";
+// הסיסמה נלקחת ממשתנה הסביבה שהגדרת ב-Render (הרב אליהו 123)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // --- פונקציה לאתחול ראשוני של הכיתה ---
 async function initDB() {
     const count = await Student.countDocuments();
     if (count === 0) {
         console.log("Initializing Database with initial students...");
-        // הנתונים הראשוניים:
         const initialStudents = [
             { id: "101", name: "יוסי כהן", balance: 50 },
             { id: "102", name: "דני לוי", balance: 120 },
@@ -45,7 +51,7 @@ async function initDB() {
         console.log("Database initialization complete.");
     }
 }
-mongoose.connection.on('connected', initDB);
+mongoose.connection.on('connected', initDB); // מפעיל את initDB רק אחרי חיבור מוצלח
 
 // --- נתיבים (Routes) ---
 
@@ -115,12 +121,11 @@ app.post('/api/create-student', async (req, res) => {
     }
 });
 
-// 5. מחיקת כל הנתונים ואתחול מחדש (נתיב חדש!)
+// 5. מחיקת כל הנתונים ואתחול מחדש
 app.post('/api/wipe-students', async (req, res) => {
     try {
         await Student.deleteMany({});
         await initDB(); 
-        await Student.find({}).select('id name balance'); // נחזיר את הנתונים המאותחלים
         res.json({ success: true, message: "כל נתוני התלמידים נמחקו בהצלחה, המערכת אותחלה." });
     } catch (error) {
         console.error("Error wiping students:", error);
