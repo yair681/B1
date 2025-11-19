@@ -117,7 +117,7 @@ app.post('/api/create-student', async (req, res) => {
     }
 });
 
-// 5. מחיקת כל הנתונים (מחיקה מוחלטת)
+// 5. מחיקת כל הנתונים
 app.post('/api/wipe-students', async (req, res) => {
     try {
         await Student.deleteMany({}); 
@@ -127,7 +127,6 @@ app.post('/api/wipe-students', async (req, res) => {
         res.json({ success: false, message: "שגיאה במחיקת הנתונים." });
     }
 });
-
 
 // 6. קבלת יתרה אישית (לתלמיד)
 app.post('/api/my-balance', async (req, res) => {
@@ -139,6 +138,24 @@ app.post('/api/my-balance', async (req, res) => {
         res.json({ balance: 0 });
     }
 });
+
+// 7. מחיקת תלמיד ספציפי (נתיב חדש!)
+app.delete('/api/delete-student/:id', async (req, res) => {
+    const studentId = req.params.id; 
+    
+    try {
+        const result = await Student.deleteOne({ id: studentId });
+
+        if (result.deletedCount === 0) {
+            return res.json({ success: false, message: "תלמיד לא נמצא או כבר נמחק." });
+        }
+        
+        res.json({ success: true, message: `תלמיד עם קוד ${studentId} נמחק בהצלחה.` });
+    } catch (error) {
+        res.json({ success: false, message: "שגיאה במחיקת התלמיד.", error: error.message });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
