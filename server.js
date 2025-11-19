@@ -11,18 +11,11 @@ app.use(express.static('public'));
 
 const mongoURI = process.env.MONGO_URI; 
 if (!mongoURI) {
-    console.error("FATAL ERROR: MONGO_URI is not defined in the environment. Please set it in Render.");
+    console.error("FATAL ERROR: MONGO_URI is not defined in the environment.");
     process.exit(1); 
 }
 
-mongoose.connect(mongoURI)
-    .then(() => console.log("MongoDB Connected Successfully!"))
-    .catch(err => {
-        console.error("Error connecting to MongoDB:", err);
-        process.exit(1);
-    });
-
-// --- הגדרת המבנה של תלמיד (Schema) ---
+// הגדרת המבנה (Schema) לפני החיבור כדי שנוכל להשתמש בו מיד
 const studentSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true }, 
     name: String,
@@ -31,23 +24,29 @@ const studentSchema = new mongoose.Schema({
 
 const Student = mongoose.model('Student', studentSchema);
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-// --- שינוי: פונקציה למחיקת משתמשי הדוגמה בהפעלה ---
-async function cleanupSampleUsers() {
-    try {
-        // מחיקה של יוסי (101), דני (102) ואריאל (103) אם הם קיימים
-        const result = await Student.deleteMany({ id: { $in: ["101", "102", "103"] } });
-        if (result.deletedCount > 0) {
-            console.log(`Removed ${result.deletedCount} sample students (101, 102, 103).`);
-        } else {
-            console.log("No sample students found to delete.");
+// חיבור למסד ומחיקה מיידית של משתמשי הדוגמה
+mongoose.connect(mongoURI)
+    .then(async () => {
+        console.log("MongoDB Connected Successfully!");
+        
+        // --- ניקוי משתמשי הדוגמה (101, 102, 103) ---
+        try {
+            const res = await Student.deleteMany({ id: { $in: ["101", "102", "103"] } });
+            if (res.deletedCount > 0) {
+                console.log(`>>> בוצע ניקוי: נמחקו ${res.deletedCount} משתמשי דוגמה (יוסי, דני, אריאל) <<<`);
+            } else {
+                console.log(">>> המערכת נקייה ממשתמשי דוגמה <<<");
+            }
+        } catch (e) {
+            console.error("שגיאה בניקוי משתמשים:", e);
         }
-    } catch (err) {
-        console.error("Error cleaning up sample users:", err);
-    }
-}
-mongoose.connection.on('connected', cleanupSampleUsers); 
+    })
+    .catch(err => {
+        console.error("Error connecting to MongoDB:", err);
+        process.exit(1);
+    });
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // --- נתיבים (Routes) ---
 
@@ -155,7 +154,6 @@ app.delete('/api/delete-student/:id', async (req, res) => {
         res.json({ success: false, message: "שגיאה במחיקת התלמיד.", error: error.message });
     }
 });
-
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
