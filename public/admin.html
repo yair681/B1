@@ -65,6 +65,9 @@
         }
         .btn-danger {
             background-color: #dc3545;
+            color: white;
+            border: none; 
+            cursor: pointer;
         }
         .btn-danger:hover {
             background-color: #c82333;
@@ -89,13 +92,23 @@
             font-size: 0.9em;
         }
         .btn-plus { background-color: #28a745; }
-        .btn-minus { background-color: #dc3545; }
-        .btn-delete { background-color: #dc3545; } /* כפתור המחיקה */
-        .btn-delete:hover { background-color: #c82333; }
+        .btn-minus { background-color: #ffc107; color: black !important; } /* שיניתי לצהוב שיהיה ברור */
+        
+        /* עיצוב ספציפי לכפתור המחיקה ברשימה */
+        .btn-delete-student { 
+            background-color: #dc3545; 
+            margin-right: 8px;
+        } 
+        .btn-delete-student:hover { background-color: #b02a37; }
+
         .balance-display { 
             font-weight: bold; 
             color: #007bff;
         }
+        
+        /* הודעות */
+        .msg-success { color: green; margin-top: 10px; }
+        .msg-error { color: red; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -103,7 +116,7 @@
         <h2>מרכז בקרה - מורה 🧑‍🏫</h2>
         <div class="top-buttons">
             <button onclick="wipeData()" class="btn-danger" style="border-radius: 6px; padding: 8px 15px;">מחק את כל הנתונים ואתחל</button>
-            <button onclick="logout()" style="background-color: #6c757d; border-radius: 6px; padding: 8px 15px;">יציאה</button>
+            <button onclick="logout()" style="background-color: #6c757d; color: white; border: none; border-radius: 6px; padding: 8px 15px; cursor: pointer;">יציאה</button>
         </div>
     </div>
 
@@ -120,11 +133,12 @@
         <div class="card">
             <h3>רשימת תלמידים ויתרה</h3>
             <div id="studentsList"></div>
-            <div id="loading" style="text-align: center;">טוען נתונים...</div>
+            <div id="loading" style="text-align: center; display: none;">טוען נתונים...</div>
         </div>
     </div>
 
     <script>
+        // בדיקת התחברות
         if (!localStorage.getItem('adminAuth')) {
             window.location.href = 'index.html';
         }
@@ -187,10 +201,9 @@
             }
         }
 
-        // פונקציית מחיקה
+        // --- פונקציה למחיקת תלמיד בודד ---
         async function deleteStudent(id, name) {
-            const confirmDelete = confirm(`האם אתה בטוח שברצונך למחוק את התלמיד ${name} (קוד ${id})?`);
-            if (!confirmDelete) return;
+            if (!confirm(`האם אתה בטוח שברצונך למחוק את התלמיד ${name}?`)) return;
 
             const res = await fetch(`/api/delete-student/${id}`, {
                 method: 'DELETE',
@@ -200,43 +213,51 @@
 
             if (data.success) {
                 alert(data.message);
-                loadStudents(); // רענון הרשימה לאחר המחיקה
+                loadStudents();
             } else {
-                alert('שגיאה במחיקת תלמיד: ' + data.message);
+                alert('שגיאה: ' + data.message);
             }
         }
 
         async function loadStudents() {
-            document.getElementById('loading').style.display = 'block';
-            const res = await fetch('/api/students');
-            const students = await res.json();
             const list = document.getElementById('studentsList');
+            const loading = document.getElementById('loading');
+            
+            loading.style.display = 'block';
             list.innerHTML = '';
-            document.getElementById('loading').style.display = 'none';
 
-            if (students.length === 0) {
-                list.innerHTML = '<p style="text-align: center; color: #6c757d;">עדיין אין תלמידים במערכת.</p>';
-                return;
+            try {
+                const res = await fetch('/api/students');
+                const students = await res.json();
+                loading.style.display = 'none';
+
+                if (students.length === 0) {
+                    list.innerHTML = '<p style="text-align: center; color: #6c757d;">עדיין אין תלמידים במערכת.</p>';
+                    return;
+                }
+
+                students.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = 'student-row';
+                    div.innerHTML = `
+                        <div class="student-info">
+                            <strong>${s.name}</strong> (קוד: ${s.id})
+                        </div>
+                        <div>
+                            יתרה: <span id="bal-${s.id}" class="balance-display">${s.balance}</span>
+                        </div>
+                        <div class="actions">
+                            <button class="btn-plus" onclick="updateBalance('${s.id}', 10)">+10</button>
+                            <button class="btn-minus" onclick="updateBalance('${s.id}', -10)">-10</button>
+                            <button class="btn-delete-student" onclick="deleteStudent('${s.id}', '${s.name}')">מחק תלמיד</button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                loading.style.display = 'none';
+                list.innerHTML = '<p style="color:red">שגיאה בטעינת נתונים</p>';
             }
-
-            students.forEach(s => {
-                const div = document.createElement('div');
-                div.className = 'student-row';
-                div.innerHTML = `
-                    <div class="student-info">
-                        ${s.name} (קוד: ${s.id})
-                    </div>
-                    <div>
-                        יתרה: <span id="bal-${s.id}" class="balance-display">${s.balance}</span>
-                    </div>
-                    <div class="actions">
-                        <button class="btn-plus" onclick="updateBalance('${s.id}', 10)">+10</button>
-                        <button class="btn-minus" onclick="updateBalance('${s.id}', -10)">-10</button>
-                        <button class="btn-delete" onclick="deleteStudent('${s.id}', '${s.name}')">מחק</button>
-                    </div>
-                `;
-                list.appendChild(div);
-            });
         }
 
         async function updateBalance(id, amount) {
@@ -254,6 +275,7 @@
             }
         }
 
+        // טעינה ראשונית
         loadStudents();
     </script>
 </body>
