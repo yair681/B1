@@ -9,10 +9,8 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// כתובת החיבור נלקחת ממשתנה הסביבה MONGO_URI
 const mongoURI = process.env.MONGO_URI; 
 if (!mongoURI) {
-    // שגיאה קריטית אם ה-URI לא מוגדר (כמו ב-Render)
     console.error("FATAL ERROR: MONGO_URI is not defined in the environment. Please set it in Render.");
     process.exit(1); 
 }
@@ -20,25 +18,22 @@ if (!mongoURI) {
 mongoose.connect(mongoURI)
     .then(() => console.log("MongoDB Connected Successfully!"))
     .catch(err => {
-        // קריסה מיידית אם יש בעיה בחיבור ל-DB
         console.error("Error connecting to MongoDB:", err);
         process.exit(1);
     });
 
 // --- הגדרת המבנה של תלמיד (Schema) ---
 const studentSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true }, // קוד ייחודי חובה
+    id: { type: String, required: true, unique: true }, 
     name: String,
     balance: Number
 });
 
 const Student = mongoose.model('Student', studentSchema);
 
-// סיסמת המורה נלקחת ממשתנה הסביבה (ADMIN_PASSWORD)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // --- פונקציה לאתחול ראשוני של הכיתה ---
-// פועלת רק פעם אחת (בהפעלה הראשונה) אם אין תלמידים בכלל ב-DB.
 async function initDB() {
     const count = await Student.countDocuments();
     if (count === 0) {
@@ -122,8 +117,7 @@ app.post('/api/create-student', async (req, res) => {
     }
 });
 
-// 5. מחיקת כל הנתונים (התיקון כאן!)
-// רק מוחק, ולא מפעיל את initDB
+// 5. מחיקת כל הנתונים (מחיקה מוחלטת)
 app.post('/api/wipe-students', async (req, res) => {
     try {
         await Student.deleteMany({}); 
