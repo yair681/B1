@@ -2,25 +2,124 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>ניהול כיתה</title>
+    <title>ניהול כיתה - מרכז בקרה</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f8f9fa; direction: rtl; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .student-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 15px 0; }
-        .actions button { padding: 5px 10px; margin: 0 2px; border-radius: 5px; border: none; cursor: pointer; color: white; }
+        /* CSS לעיצוב נקי ומודרני */
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            padding: 30px; 
+            background-color: #f4f6f9; 
+            direction: rtl; 
+            color: #333;
+        }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px; 
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ddd;
+        }
+        .header h2 { 
+            color: #007bff; 
+            margin: 0;
+        }
+        .top-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr; /* טופס משמאל, רשימה מימין */
+            gap: 30px;
+        }
+        .card { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+        }
+        
+        /* עיצוב טופס */
+        input:not([type="button"]), select { 
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 15px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            box-sizing: border-box;
+        }
+        .btn-primary { 
+            background-color: #28a745; 
+            color: white; 
+            border: none; 
+            padding: 10px 15px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+        .btn-primary:hover { 
+            background-color: #218838; 
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        /* רשימת תלמידים */
+        .student-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid #eee; 
+            padding: 12px 0; 
+            font-size: 1.1em;
+        }
+        .actions button { 
+            padding: 7px 10px; 
+            margin: 0 2px; 
+            border-radius: 5px; 
+            border: none; 
+            cursor: pointer; 
+            color: white; 
+            font-size: 0.9em;
+        }
         .btn-plus { background-color: #28a745; }
         .btn-minus { background-color: #dc3545; }
-        h2 { display: flex; justify-content: space-between; align-items: center; }
+        .balance-display { 
+            font-weight: bold; 
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>
-            <span>ניהול ארנק כיתתי 👨‍🏫</span>
-            <button onclick="window.location.href='index.html'" style="background-color: #6c757d;">יציאה</button>
-        </h2>
-        
-        <div id="studentsList"></div>
+    <div class="header">
+        <h2>מרכז בקרה - מורה 🧑‍🏫</h2>
+        <div class="top-buttons">
+            <button onclick="wipeData()" class="btn-danger" style="border-radius: 6px; padding: 8px 15px;">מחק את כל הנתונים ואתחל</button>
+            <button onclick="logout()" style="background-color: #6c757d; border-radius: 6px; padding: 8px 15px;">יציאה</button>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        <div class="card">
+            <h3>+ יצירת תלמיד חדש</h3>
+            <input type="number" id="newId" placeholder="קוד תלמיד (למשל 104)" required>
+            <input type="text" id="newName" placeholder="שם מלא של התלמיד" required>
+            <input type="number" id="initialBalance" placeholder="יתרה התחלתית (ברירת מחדל: 0)" value="0">
+            <button class="btn-primary" onclick="createNewStudent()">צור משתמש</button>
+            <div id="creationMessage"></div>
+        </div>
+
+        <div class="card">
+            <h3>רשימת תלמידים ויתרה</h3>
+            <div id="studentsList"></div>
+            <div id="loading" style="text-align: center;">טוען נתונים...</div>
+        </div>
     </div>
 
     <script>
@@ -29,42 +128,110 @@
             window.location.href = 'index.html';
         }
 
+        function logout() {
+            localStorage.removeItem('adminAuth');
+            window.location.href = 'index.html';
+        }
+
+        function showMessage(elementId, message, isSuccess) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = message;
+            el.className = isSuccess ? 'msg-success' : 'msg-error';
+            setTimeout(() => { el.innerHTML = ''; el.className = ''; }, 3000);
+        }
+
+        // פונקציה חדשה למחיקת כל הנתונים
+        async function wipeData() {
+            const confirmWipe = confirm("האם אתה בטוח שברצונך למחוק את כל הנתונים (כולל כל התלמידים והיתרות)? פעולה זו אינה הפיכה!");
+            if (!confirmWipe) return;
+
+            const res = await fetch('/api/wipe-students', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                alert(data.message);
+                loadStudents(); // רענון הרשימה עם הנתונים המאותחלים
+            } else {
+                alert('שגיאה במחיקת נתונים: ' + data.message);
+            }
+        }
+        
+        // ... (שאר פונקציות ה-JS נשארות זהות)
+        async function createNewStudent() {
+            const id = document.getElementById('newId').value;
+            const name = document.getElementById('newName').value;
+            const balance = document.getElementById('initialBalance').value;
+            
+            if (!id || !name) {
+                showMessage('creationMessage', 'נא למלא קוד ושם תלמיד.', false);
+                return;
+            }
+
+            const res = await fetch('/api/create-student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, name, balance: parseInt(balance) })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showMessage('creationMessage', data.message, true);
+                document.getElementById('newId').value = '';
+                document.getElementById('newName').value = '';
+                document.getElementById('initialBalance').value = '0';
+                loadStudents();
+            } else {
+                showMessage('creationMessage', data.message, false);
+            }
+        }
+
         async function loadStudents() {
+            document.getElementById('loading').style.display = 'block';
             const res = await fetch('/api/students');
             const students = await res.json();
             const list = document.getElementById('studentsList');
             list.innerHTML = '';
+            document.getElementById('loading').style.display = 'none';
+
+            if (students.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #6c757d;">עדיין אין תלמידים במערכת.</p>';
+                return;
+            }
 
             students.forEach(s => {
                 const div = document.createElement('div');
                 div.className = 'student-row';
                 div.innerHTML = `
+                    <div class="student-info">
+                        ${s.name} (קוד: ${s.id})
+                    </div>
                     <div>
-                        <strong>${s.name}</strong> (קוד: ${s.id})
-                        <br>יתרה: <span id="bal-${s.id}">${s.balance}</span>
+                        יתרה: <span id="bal-${s.id}" class="balance-display">${s.balance}</span>
                     </div>
                     <div class="actions">
-                        <button class="btn-plus" onclick="update('${s.id}', 10)">+10</button>
-                        <button class="btn-plus" onclick="update('${s.id}', 50)">+50</button>
-                        <button class="btn-minus" onclick="update('${s.id}', -10)">-10</button>
+                        <button class="btn-plus" onclick="updateBalance('${s.id}', 10)">+10</button>
+                        <button class="btn-minus" onclick="updateBalance('${s.id}', -10)">-10</button>
                     </div>
                 `;
                 list.appendChild(div);
             });
         }
 
-        async function update(id, amount) {
+        async function updateBalance(id, amount) {
             const res = await fetch('/api/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ studentId: id, amount })
             });
             const data = await res.json();
+            
             if (data.success) {
                 document.getElementById(`bal-${id}`).innerText = data.newBalance;
-                alert(`היתרה של ${id} עודכנה ל- ${data.newBalance}`);
             } else {
-                alert('שגיאה בעדכון היתרה.');
+                alert('שגיאה בעדכון היתרה: ' + data.message);
             }
         }
 
