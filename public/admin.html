@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>ניהול כיתה</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f8f9fa; direction: rtl; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .student-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 15px 0; }
+        .actions button { padding: 5px 10px; margin: 0 2px; border-radius: 5px; border: none; cursor: pointer; color: white; }
+        .btn-plus { background-color: #28a745; }
+        .btn-minus { background-color: #dc3545; }
+        h2 { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>
+            <span>ניהול ארנק כיתתי 👨‍🏫</span>
+            <button onclick="window.location.href='index.html'" style="background-color: #6c757d;">יציאה</button>
+        </h2>
+        
+        <div id="studentsList"></div>
+    </div>
+
+    <script>
+        // בקרת גישה פשוטה למורה
+        if (!localStorage.getItem('adminAuth')) {
+            window.location.href = 'index.html';
+        }
+
+        async function loadStudents() {
+            const res = await fetch('/api/students');
+            const students = await res.json();
+            const list = document.getElementById('studentsList');
+            list.innerHTML = '';
+
+            students.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'student-row';
+                div.innerHTML = `
+                    <div>
+                        <strong>${s.name}</strong> (קוד: ${s.id})
+                        <br>יתרה: <span id="bal-${s.id}">${s.balance}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-plus" onclick="update('${s.id}', 10)">+10</button>
+                        <button class="btn-plus" onclick="update('${s.id}', 50)">+50</button>
+                        <button class="btn-minus" onclick="update('${s.id}', -10)">-10</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        async function update(id, amount) {
+            const res = await fetch('/api/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId: id, amount })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById(`bal-${id}`).innerText = data.newBalance;
+                alert(`היתרה של ${id} עודכנה ל- ${data.newBalance}`);
+            } else {
+                alert('שגיאה בעדכון היתרה.');
+            }
+        }
+
+        loadStudents();
+    </script>
+</body>
+</html>

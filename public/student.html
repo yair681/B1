@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הארנק שלי</title>
+    <style>
+        /* הגדרות כלליות */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            background: #121212; /* רקע כהה */
+            color: #e0e0e0; /* צבע טקסט בהיר */
+            padding: 40px 20px; 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* כרטיס הארנק (המראה היוקרתי) */
+        .wallet-card { 
+            background: linear-gradient(145deg, #1f1f1f, #0a0a0a); /* גרדיאנט כהה */
+            padding: 30px; 
+            border-radius: 18px; 
+            max-width: 350px; 
+            width: 100%;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(255, 255, 255, 0.05); /* הצללה וברק פנימי */
+            position: relative;
+            text-align: right;
+            border: 1px solid #333;
+        }
+
+        /* אייקון שבב (ויזואליות) */
+        .chip {
+            width: 40px;
+            height: 30px;
+            background: linear-gradient(135deg, #e7c37c, #b38e4a); /* צבע זהב */
+            border-radius: 6px;
+            position: absolute;
+            top: 25px;
+            left: 25px; 
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ברכת שלום ושם */
+        #greeting {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #fdd835; /* הדגשה צהובה */
+        }
+
+        /* היתרה */
+        .label {
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #a0a0a0;
+            margin-top: 15px;
+        }
+        .amount { 
+            font-size: 3em; 
+            font-weight: 700; 
+            margin: 5px 0 10px 0; 
+            color: #ffffff;
+            direction: ltr; /* יישור המספרים לשמאל */
+            text-align: left;
+        }
+        .currency {
+            font-size: 1.2em;
+            color: #fdd835;
+        }
+
+        /* כפתור יציאה */
+        button { 
+            background-color: #3a3a3a; 
+            color: #e0e0e0; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: background-color 0.3s;
+            margin-top: 20px;
+        }
+        button:hover { 
+            background-color: #555; 
+        }
+    </style>
+</head>
+<body>
+    <div class="wallet-card">
+        <div class="chip"></div>
+        <h2 id="greeting">שלום!</h2>
+        
+        <div class="label">יתרת נקודות נוכחית</div>
+        <div class="amount">
+            <span id="balance">---</span> 
+            <span class="currency">₪</span> 
+        </div>
+        
+    </div>
+    
+    <button onclick="window.location.href='index.html'">יציאה והתנתקות</button>
+
+    <script>
+        async function loadBalance() {
+            const name = localStorage.getItem('studentName');
+            const code = localStorage.getItem('studentCode');
+            
+            if(!code) {
+                window.location.href = 'index.html';
+                return; 
+            }
+            
+            document.getElementById('greeting').innerText = `שלום ${name}! כל הכבוד!`;
+
+            const res = await fetch('/api/my-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+            // שימוש ב-toLocaleString להצגת המספרים בצורה נכונה
+            document.getElementById('balance').innerText = data.balance.toLocaleString('en-US'); 
+        }
+        loadBalance();
+    </script>
+</body>
+</html>
