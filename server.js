@@ -33,21 +33,21 @@ const Student = mongoose.model('Student', studentSchema);
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-// --- פונקציה לאתחול ראשוני של הכיתה ---
-async function initDB() {
-    const count = await Student.countDocuments();
-    if (count === 0) {
-        console.log("Initializing Database with initial students...");
-        const initialStudents = [
-            { id: "101", name: "יוסי כהן", balance: 50 },
-            { id: "102", name: "דני לוי", balance: 120 },
-            { id: "103", name: "אריאל מזרחי", balance: 85 }
-        ];
-        await Student.insertMany(initialStudents);
-        console.log("Database initialization complete.");
+// --- שינוי: פונקציה למחיקת משתמשי הדוגמה בהפעלה ---
+async function cleanupSampleUsers() {
+    try {
+        // מחיקה של יוסי (101), דני (102) ואריאל (103) אם הם קיימים
+        const result = await Student.deleteMany({ id: { $in: ["101", "102", "103"] } });
+        if (result.deletedCount > 0) {
+            console.log(`Removed ${result.deletedCount} sample students (101, 102, 103).`);
+        } else {
+            console.log("No sample students found to delete.");
+        }
+    } catch (err) {
+        console.error("Error cleaning up sample users:", err);
     }
 }
-mongoose.connection.on('connected', initDB); 
+mongoose.connection.on('connected', cleanupSampleUsers); 
 
 // --- נתיבים (Routes) ---
 
@@ -139,7 +139,7 @@ app.post('/api/my-balance', async (req, res) => {
     }
 });
 
-// 7. מחיקת תלמיד ספציפי (נתיב חדש!)
+// 7. מחיקת תלמיד ספציפי
 app.delete('/api/delete-student/:id', async (req, res) => {
     const studentId = req.params.id; 
     
