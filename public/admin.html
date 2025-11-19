@@ -90,6 +90,8 @@
         }
         .btn-plus { background-color: #28a745; }
         .btn-minus { background-color: #dc3545; }
+        .btn-delete { background-color: #dc3545; } /* כפתור המחיקה */
+        .btn-delete:hover { background-color: #c82333; }
         .balance-display { 
             font-weight: bold; 
             color: #007bff;
@@ -123,7 +125,6 @@
     </div>
 
     <script>
-        // בקרת גישה פשוטה למורה
         if (!localStorage.getItem('adminAuth')) {
             window.location.href = 'index.html';
         }
@@ -140,7 +141,6 @@
             setTimeout(() => { el.innerHTML = ''; el.className = ''; }, 3000);
         }
 
-        // פונקציה חדשה למחיקת כל הנתונים
         async function wipeData() {
             const confirmWipe = confirm("האם אתה בטוח שברצונך למחוק את כל הנתונים (כולל כל התלמידים והיתרות)? פעולה זו אינה הפיכה!");
             if (!confirmWipe) return;
@@ -153,13 +153,12 @@
             
             if (data.success) {
                 alert(data.message);
-                loadStudents(); // רענון הרשימה עם הנתונים המאותחלים
+                loadStudents();
             } else {
                 alert('שגיאה במחיקת נתונים: ' + data.message);
             }
         }
         
-        // ... (שאר פונקציות ה-JS נשארות זהות)
         async function createNewStudent() {
             const id = document.getElementById('newId').value;
             const name = document.getElementById('newName').value;
@@ -185,6 +184,25 @@
                 loadStudents();
             } else {
                 showMessage('creationMessage', data.message, false);
+            }
+        }
+
+        // פונקציית מחיקה חדשה!
+        async function deleteStudent(id, name) {
+            const confirmDelete = confirm(`האם אתה בטוח שברצונך למחוק את התלמיד ${name} (קוד ${id})?`);
+            if (!confirmDelete) return;
+
+            const res = await fetch(`/api/delete-student/${id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alert(data.message);
+                loadStudents(); // רענון הרשימה לאחר המחיקה
+            } else {
+                alert('שגיאה במחיקת תלמיד: ' + data.message);
             }
         }
 
@@ -214,6 +232,7 @@
                     <div class="actions">
                         <button class="btn-plus" onclick="updateBalance('${s.id}', 10)">+10</button>
                         <button class="btn-minus" onclick="updateBalance('${s.id}', -10)">-10</button>
+                        <button class="btn-delete" onclick="deleteStudent('${s.id}', '${s.name}')">מחק</button>
                     </div>
                 `;
                 list.appendChild(div);
